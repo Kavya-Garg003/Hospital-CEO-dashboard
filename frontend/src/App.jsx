@@ -12,12 +12,7 @@ import {
 } from "./data/syntheticData";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { Responsive, WidthProvider } from "react-grid-layout";
-import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
 import ForceGraph2D from "react-force-graph-2d";
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
 
 // ─── API CONFIG ────────────────────────────────────────────────────────────────
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -631,32 +626,14 @@ export default function App() {
         {/* ── OVERVIEW ── */}
         {tab === "overview" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <ResponsiveGridLayout
-              className="layout"
-              layouts={{
-                lg: [
-                  { i: "kpi1", x: 0, y: 0, w: 1, h: 1 },
-                  { i: "kpi2", x: 1, y: 0, w: 1, h: 1 },
-                  { i: "kpi3", x: 2, y: 0, w: 1, h: 1 },
-                  { i: "kpi4", x: 3, y: 0, w: 1, h: 1 },
-                  { i: "kpi5", x: 4, y: 0, w: 1, h: 1 },
-                  { i: "kpi6", x: 5, y: 0, w: 1, h: 1 },
-                ]
-              }}
-              breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-              cols={{ lg: 6, md: 3, sm: 2, xs: 1, xxs: 1 }}
-              rowHeight={160}
-              isDraggable={true}
-              isResizable={false}
-              margin={[14, 14]}
-            >
-              <div key="kpi1"><KPICard title="Annual Revenue" value={fmt(totalRevenue)} sub={`FY ${HOSPITAL.fy}`} trend={8.4} sparkData={DATA.revenue.map(d => d.revenue)} color="#3b82f6" icon="💰" /></div>
-              <div key="kpi2"><KPICard title="Net Profit" value={fmt(netProfit)} sub={`${((netProfit/totalRevenue)*100).toFixed(1)}% margin`} trend={5.2} sparkData={DATA.revenue.map(d => d.revenue - d.opex)} color="#10b981" icon="📈" /></div>
-              <div key="kpi3"><KPICard title="Total Patients" value={fmtNum(totalPatients)} sub="Inpatient + Outpatient" trend={3.1} sparkData={DATA.patients.map(d => d.inpatient + d.outpatient)} color="#8b5cf6" icon="🏥" /></div>
-              <div key="kpi4"><KPICard title="Bed Occupancy" value="78%" sub={`${Math.round(0.78*HOSPITAL.beds)}/${HOSPITAL.beds} beds occupied`} trend={2.0} sparkData={[72,74,77,76,78,80,78,79,77,76,79,78]} color="#f59e0b" icon="🛏️" /></div>
-              <div key="kpi5"><KPICard title="Total Staff" value={fmtNum(totalStaff)} sub="Across all departments" trend={1.5} sparkData={[700,710,718,720,722,725,720,718,722,725,728,720]} color="#ec4899" icon="👥" /></div>
-              <div key="kpi6"><KPICard title="Insurance Claims" value={fmtNum(totalInsuranceClaims)} sub={`${fmtNum(totalInsurancePending)} pending`} trend={-2.1} sparkData={DATA.insurance.map(d => d.claims)} color="#ef4444" icon="📋" /></div>
-            </ResponsiveGridLayout>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+              <KPICard title="Annual Revenue" value={fmt(totalRevenue)} sub={`FY ${HOSPITAL.fy}`} trend={8.4} sparkData={DATA.revenue.map(d => d.revenue)} color="#3b82f6" icon="💰" />
+              <KPICard title="Net Profit" value={fmt(netProfit)} sub={`${((netProfit/totalRevenue)*100).toFixed(1)}% margin`} trend={5.2} sparkData={DATA.revenue.map(d => d.revenue - d.opex)} color="#10b981" icon="📈" />
+              <KPICard title="Total Patients" value={fmtNum(totalPatients)} sub="Inpatient + Outpatient" trend={3.1} sparkData={DATA.patients.map(d => d.inpatient + d.outpatient)} color="#8b5cf6" icon="🏥" />
+              <KPICard title="Bed Occupancy" value="78%" sub={`${Math.round(0.78*HOSPITAL.beds)}/${HOSPITAL.beds} beds occupied`} trend={2.0} sparkData={[72,74,77,76,78,80,78,79,77,76,79,78]} color="#f59e0b" icon="🛏️" />
+              <KPICard title="Total Staff" value={fmtNum(totalStaff)} sub="Across all departments" trend={1.5} sparkData={[700,710,718,720,722,725,720,718,722,725,728,720]} color="#ec4899" icon="👥" />
+              <KPICard title="Insurance Claims" value={fmtNum(totalInsuranceClaims)} sub={`${fmtNum(totalInsurancePending)} pending`} trend={-2.1} sparkData={DATA.insurance.map(d => d.claims)} color="#ef4444" icon="📋" />
+            </div>
             <div className="grid-2">
               <div className="card">
                 <SectionHeader title="Revenue vs Expenditure" subtitle="Monthly trend — FY 2024-25" icon="📊" />
