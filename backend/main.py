@@ -21,15 +21,16 @@ from datetime import datetime, timezone
 from typing import Set
 
 import uvicorn
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from config import settings
-from database import close_connections, init_db, get_neo4j_driver
+from database import close_connections, init_db, get_neo4j_driver, get_db
 from routes.analytics import router as analytics_router
 from routes.finance import router as finance_router
 from routes.patients import router as patients_router
@@ -203,20 +204,22 @@ from models.schemas import GraphData
 from models.graph_models import get_patient_graph, get_department_graph
 
 @app.get("/api/graph/patients", response_model=GraphData, tags=["Graph Analytics"])
-async def get_patient_graph_data(limit: int = 100):
+async def get_patient_graph_data(limit: int = 100, db: AsyncSession = Depends(get_db)):
     """Neo4j patient–doctor–department relationship graph."""
     driver = get_neo4j_driver()
     if not driver:
-        return GraphData(nodes=[], edges=[], total_nodes=0, total_edges=0)
+        from models.graph_models import fallback_get_patient_graph
+        return await fallback_get_patient_graph(db)
     return get_patient_graph(driver, limit)
 
 
 @app.get("/api/graph/department/{dept_name}", response_model=GraphData, tags=["Graph Analytics"])
-async def get_dept_graph(dept_name: str):
+async def get_dept_graph(dept_name: str, db: AsyncSession = Depends(get_db)):
     """Neo4j department-focused subgraph."""
     driver = get_neo4j_driver()
     if not driver:
-        return GraphData(nodes=[], edges=[], total_nodes=0, total_edges=0)
+        from models.graph_models import fallback_get_department_graph
+        return await fallback_get_department_graph(db, dept_name)
     return get_department_graph(driver, dept_name)
 
 

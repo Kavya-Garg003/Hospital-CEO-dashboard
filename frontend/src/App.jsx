@@ -442,6 +442,7 @@ export default function App() {
   const [token, setToken] = useState(localStorage.getItem("access_token") || null);
   const [loginForm, setLoginForm] = useState({ username: "", password: "", error: "", loading: false });
   const [graphData, setGraphData] = useState({ nodes: [], edges: [] });
+  const [selectedGraphDept, setSelectedGraphDept] = useState("All");
   const wsRef = useRef(null);
 
   // WebSocket live KPI updates
@@ -458,49 +459,31 @@ export default function App() {
       };
       wsRef.current = ws;
 
-      if (USE_BACKEND) {
-        // Fetch Graph Data
-        fetch(`${API_BASE}/api/graph/patients?limit=50`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        })
-          .then(res => res.json())
-          .then(data => {
-            if (data && data.nodes && data.nodes.length > 0) {
-              setGraphData({ nodes: data.nodes, links: data.edges });
-            } else {
-              // Fallback synthetic graph if Neo4j is empty/offline
-              const nodes = [{ id: "DEPT_1", label: "Cardiology", group: 1 }];
-              const links = [];
-              for (let i = 1; i <= 10; i++) {
-                nodes.push({ id: `D${i}`, label: `Dr. ${i}`, group: 2 });
-                links.push({ source: `D${i}`, target: "DEPT_1" });
-                for (let j = 1; j <= 3; j++) {
-                  nodes.push({ id: `P${i}_${j}`, label: `Patient`, group: 3 });
-                  links.push({ source: `P${i}_${j}`, target: `D${i}` });
-                }
-              }
-              setGraphData({ nodes, links });
-            }
-          })
-          .catch(err => console.error("Neo4j fetch error:", err));
-      } else {
-        // Fallback synthetic graph
-        const nodes = [{ id: "DEPT_1", label: "Cardiology", group: 1 }];
-        const links = [];
-        for (let i = 1; i <= 10; i++) {
-          nodes.push({ id: `D${i}`, label: `Dr. ${i}`, group: 2 });
-          links.push({ source: `D${i}`, target: "DEPT_1" });
-          for (let j = 1; j <= 3; j++) {
-            nodes.push({ id: `P${i}_${j}`, label: `Patient`, group: 3 });
-            links.push({ source: `P${i}_${j}`, target: `D${i}` });
-          }
-        }
-        setGraphData({ nodes, links });
-      }
-
       return () => ws.close();
     } catch {}
   }, []);
+
+  // Graph Data Fetch
+  useEffect(() => {
+    if (!USE_BACKEND) return;
+
+    const endpoint = selectedGraphDept === "All" 
+      ? `${API_BASE}/api/graph/patients?limit=50`
+      : `${API_BASE}/api/graph/department/${selectedGraphDept}`;
+
+    fetch(endpoint, {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.nodes && data.nodes.length > 0) {
+          setGraphData({ nodes: data.nodes, links: data.edges });
+        } else {
+          setGraphData({ nodes: [], links: [] });
+        }
+      })
+      .catch(err => console.error("Graph fetch error:", err));
+  }, [selectedGraphDept, token]);
 
   const filteredApts = DATA.appointments.filter(a =>
     a.dept.toLowerCase().includes(aptFilter.toLowerCase()) ||
@@ -853,10 +836,23 @@ export default function App() {
 
             <div className="card">
               <SectionHeader title="Patient-Doctor Network (Neo4j)" subtitle="Visualizing treatment pathways and workload" icon="🕸️" />
+              <div style={{ marginBottom: 15, display: "flex", gap: 10, alignItems: "center" }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-600)" }}>Filter Department:</label>
+                <select 
+                  value={selectedGraphDept} 
+                  onChange={e => setSelectedGraphDept(e.target.value)}
+                  style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid var(--gray-300)", fontSize: 13 }}
+                >
+                  <option value="All">All Departments</option>
+                  {DATA.departments.map(d => (
+                    <option key={d.name} value={d.name}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
               <div style={{ border: "1px solid var(--gray-200)", borderRadius: 10, height: 400, overflow: "hidden", background: "#fafafa", display: "flex", justifyContent: "center" }}>
                 <ForceGraph2D
                   graphData={graphData}
-                  nodeLabel="label"
+                  nodeLabel={node => node.properties?.patient_count ? `${node.label} (${node.properties.patient_count} patients)` : node.label}
                   nodeColor={node => node.group === 1 || node.type === "Department" ? "#ef4444" : node.group === 2 || node.type === "Doctor" ? "#3b82f6" : "#10b981"}
                   nodeRelSize={6}
                   linkColor={() => "rgba(148, 163, 184, 0.4)"}

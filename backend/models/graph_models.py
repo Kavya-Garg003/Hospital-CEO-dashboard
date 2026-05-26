@@ -163,3 +163,66 @@ def get_readmission_pathway(driver, patient_id: int) -> GraphData:
 
     node_list = list(nodes_map.values())
     return GraphData(nodes=node_list, edges=edges, total_nodes=len(node_list), total_edges=len(edges))
+
+async def fallback_get_patient_graph(db) -> GraphData:
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from models.sql_models import Appointment
+    
+    nodes = {}
+    edges = []
+    
+    res = await db.execute(select(Appointment).options(selectinload(Appointment.doctor), selectinload(Appointment.department)).limit(50))
+    appointments = res.scalars().all()
+    
+    for appt in appointments:
+        if not appt.doctor or not appt.department:
+            continue
+            
+        pid = f"P_APPT_{appt.id}"
+        did = f"D{appt.doctor.id}"
+        deptid = f"DEPT_{appt.department.id}"
+        
+        if pid not in nodes:
+            nodes[pid] = GraphNode(id=pid, label=f"Patient", type="Patient", properties={})
+        if did not in nodes:
+            nodes[did] = GraphNode(id=did, label=appt.doctor.name, type="Doctor", properties={})
+        if deptid not in nodes:
+            nodes[deptid] = GraphNode(id=deptid, label=appt.department.name, type="Department", properties={})
+            
+        edges.append(GraphEdge(source=pid, target=did, relationship="TREATED_BY"))
+        edges.append(GraphEdge(source=did, target=deptid, relationship="WORKS_IN"))
+        
+    node_list = list(nodes.values())
+    return GraphData(nodes=node_list, edges=edges, total_nodes=len(node_list), total_edges=len(edges))
+
+
+async def fallback_get_department_graph(db, dept_name: str) -> GraphData:
+    from sqlalchemy import select, func
+    from models.sql_models import Department, Staff, Appointment
+    
+    nodes = {}
+    edges = []
+    
+    res = await db.execute(select(Department).where(Department.name == dept_name))
+    dept = res.scalar()
+    if not dept:
+        return GraphData(nodes=[], edges=[], total_nodes=0, total_edges=0)
+        
+    deptid = f"DEPT_{dept.id}"
+    nodes[deptid] = GraphNode(id=deptid, label=dept.name, type="Department", properties={})
+    
+    doc_res = await db.execute(select(Staff).where(Staff.department_id == dept.id).where(Staff.role == 'doctor'))
+    doctors = doc_res.scalars().all()
+    
+    for d in doctors:
+        did = f"D{d.id}"
+        count_res = await db.execute(select(func.count(Appointment.id)).where(Appointment.doctor_id == d.id))
+        pcount = count_res.scalar() or 0
+        
+        nodes[did] = GraphNode(id=did, label=d.name, type="Doctor", properties={"patient_count": pcount})
+        edges.append(GraphEdge(source=did, target=deptid, relationship="WORKS_IN"))
+        
+    node_list = list(nodes.values())
+    return GraphData(nodes=node_list, edges=edges, total_nodes=len(node_list), total_edges=len(edges))
+
