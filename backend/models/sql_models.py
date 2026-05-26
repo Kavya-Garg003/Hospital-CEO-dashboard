@@ -233,7 +233,7 @@ class AuditLog(Base):
         Index("ix_audit_log_action", "action"),
     )
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     user_id = Column(Integer)
     user_role = Column(String(20))
