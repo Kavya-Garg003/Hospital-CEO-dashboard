@@ -465,7 +465,22 @@ export default function App() {
         })
           .then(res => res.json())
           .then(data => {
-            if (data && data.nodes) setGraphData({ nodes: data.nodes, links: data.edges });
+            if (data && data.nodes && data.nodes.length > 0) {
+              setGraphData({ nodes: data.nodes, links: data.edges });
+            } else {
+              // Fallback synthetic graph if Neo4j is empty/offline
+              const nodes = [{ id: "DEPT_1", label: "Cardiology", group: 1 }];
+              const links = [];
+              for (let i = 1; i <= 10; i++) {
+                nodes.push({ id: `D${i}`, label: `Dr. ${i}`, group: 2 });
+                links.push({ source: `D${i}`, target: "DEPT_1" });
+                for (let j = 1; j <= 3; j++) {
+                  nodes.push({ id: `P${i}_${j}`, label: `Patient`, group: 3 });
+                  links.push({ source: `P${i}_${j}`, target: `D${i}` });
+                }
+              }
+              setGraphData({ nodes, links });
+            }
           })
           .catch(err => console.error("Neo4j fetch error:", err));
       } else {
