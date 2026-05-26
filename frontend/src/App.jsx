@@ -12,9 +12,7 @@ import {
 } from "./data/syntheticData";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import RGL from "react-grid-layout";
-const Responsive = RGL.Responsive;
-const WidthProvider = RGL.WidthProvider;
+import { Responsive, WidthProvider } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import ForceGraph2D from "react-force-graph-2d";
